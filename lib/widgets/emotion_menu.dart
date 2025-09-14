@@ -1,18 +1,17 @@
+// lib/widgets/emotion_menu.dart
 import 'package:flutter/material.dart';
+import 'package:srj_5/models/app_models.dart';
 import 'dart:math';
 
-// 감정 메뉴 아이템 모델
 class EmotionMenuItem {
-  final IconData icon;
+  final IconData iconData;
   final String label;
-  final String key;
-  EmotionMenuItem(this.icon, this.label, this.key);
+  final EmotionIcon key;
+  EmotionMenuItem(this.iconData, this.label, this.key);
 }
 
-// 홈 화면에 표시될 원형 감정 메뉴 위젯
 class EmotionMenu extends StatefulWidget {
   final Function(EmotionMenuItem) onEmotionSelected;
-
   const EmotionMenu({super.key, required this.onEmotionSelected});
 
   @override
@@ -26,12 +25,12 @@ class _EmotionMenuState extends State<EmotionMenu>
   late Animation<double> _fadeAnimation;
 
   final List<EmotionMenuItem> emotions = [
-    EmotionMenuItem(Icons.sentiment_very_dissatisfied, '우울', 'depression'),
-    EmotionMenuItem(Icons.sentiment_neutral, '불안', 'anxiety'),
-    EmotionMenuItem(Icons.whatshot, '분노', 'anger'),
-    EmotionMenuItem(Icons.hourglass_empty, '공허', 'lethargy'),
-    EmotionMenuItem(Icons.battery_alert, '번아웃', 'burnout'),
-    EmotionMenuItem(Icons.sentiment_satisfied, '차분', 'calm'),
+    EmotionMenuItem(Icons.sentiment_very_dissatisfied, '우울', EmotionIcon.sad),
+    EmotionMenuItem(Icons.sentiment_neutral, '불안', EmotionIcon.anxious),
+    EmotionMenuItem(Icons.whatshot, '분노', EmotionIcon.angry),
+    EmotionMenuItem(Icons.hourglass_empty, '공허', EmotionIcon.empty),
+    EmotionMenuItem(Icons.battery_alert, '번아웃', EmotionIcon.tired),
+    EmotionMenuItem(Icons.sentiment_satisfied, '차분', EmotionIcon.calm),
   ];
 
   @override
@@ -63,7 +62,6 @@ class _EmotionMenuState extends State<EmotionMenu>
     return Stack(
       alignment: Alignment.center,
       children: [
-        // 뒷배경 블러 처리
         FadeTransition(
           opacity: _fadeAnimation,
           child: Container(color: Colors.black.withOpacity(0.4)),
@@ -73,17 +71,14 @@ class _EmotionMenuState extends State<EmotionMenu>
     );
   }
 
-  // 원형으로 감정 아이템들을 배치
   List<Widget> _buildEmotionItems() {
     final List<Widget> items = [];
     const double radius = 120.0;
     final double angleStep = (2 * pi) / emotions.length;
-
     for (int i = 0; i < emotions.length; i++) {
-      final angle = i * angleStep - (pi / 2); // 시작점을 위쪽으로 조정
+      final angle = i * angleStep - (pi / 2);
       final x = cos(angle) * radius;
       final y = sin(angle) * radius;
-
       items.add(
         Transform.translate(
           offset: Offset(x, y),
@@ -98,7 +93,7 @@ class _EmotionMenuState extends State<EmotionMenu>
                     radius: 30,
                     backgroundColor: Colors.white,
                     child: Icon(
-                      emotions[i].icon,
+                      emotions[i].iconData,
                       size: 30,
                       color: Colors.deepPurple,
                     ),

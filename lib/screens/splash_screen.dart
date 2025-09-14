@@ -1,3 +1,4 @@
+// lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:srj_5/screens/home_screen.dart';
@@ -19,16 +20,11 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkOnboardingStatus() async {
-    // 2초간 스플래시 화면을 보여줌
     await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
-
-    // 로컬 저장소에서 온보딩 완료 여부 확인
     final prefs = await SharedPreferences.getInstance();
     final bool onboardingCompleted =
         prefs.getBool('onboardingCompleted') ?? false;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -45,11 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.favorite_border,
-              color: AppColors.primary,
-              size: 80,
-            ),
+            const Icon(Icons.psychology, color: AppColors.primary, size: 80),
             const SizedBox(height: 20),
             Text(
               '마음 케어',

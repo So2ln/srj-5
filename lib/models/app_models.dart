@@ -1,71 +1,141 @@
-// 앱에서 사용하는 모든 데이터 클래스를 정의합니다.
+// lib/models/app_models.dart
 
-// 감정 분석 API의 응답을 파싱하기 위한 모델
-class AnalysisResult {
-  final String mainCluster;
-  final Map<String, double> clusterProbabilities;
-  final Intervention intervention;
-  final String reasonCard;
+// 분석 플로우에 사용되는 모든 데이터의 형태를 정의합니다.
 
-  AnalysisResult({
-    required this.mainCluster,
-    required this.clusterProbabilities,
-    required this.intervention,
-    required this.reasonCard,
-  });
+enum EmotionCluster {
+  depression,
+  anxiety,
+  panic,
+  anger,
+  numbness,
+  burnout,
+  calm;
 
-  factory AnalysisResult.fromJson(Map<String, dynamic> json) {
-    var probabilitiesJson =
-        json['cluster_probabilities'] as Map<String, dynamic>;
-    Map<String, double> probabilities = probabilitiesJson.map((key, value) {
-      return MapEntry(key, value.toDouble());
-    });
-
-    return AnalysisResult(
-      mainCluster: json['main_cluster'],
-      clusterProbabilities: probabilities,
-      intervention: Intervention.fromJson(json['intervention']),
-      reasonCard: json['reason_card'],
+  factory EmotionCluster.fromString(String value) {
+    return EmotionCluster.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => EmotionCluster.anxiety,
     );
   }
 }
 
-// 개입(솔루션) 정보를 담는 모델
-class Intervention {
-  final String routineName;
-  final String type;
+enum EmotionIcon {
+  sad,
+  anxious,
+  fearful,
+  angry,
+  empty,
+  tired,
+  calm;
 
-  Intervention({required this.routineName, required this.type});
-
-  factory Intervention.fromJson(Map<String, dynamic> json) {
-    return Intervention(routineName: json['routine_name'], type: json['type']);
+  EmotionCluster toCluster() {
+    switch (this) {
+      case EmotionIcon.sad:
+        return EmotionCluster.depression;
+      case EmotionIcon.anxious:
+        return EmotionCluster.anxiety;
+      case EmotionIcon.fearful:
+        return EmotionCluster.panic;
+      case EmotionIcon.angry:
+        return EmotionCluster.anger;
+      case EmotionIcon.empty:
+        return EmotionCluster.numbness;
+      case EmotionIcon.tired:
+        return EmotionCluster.burnout;
+      case EmotionIcon.calm:
+        return EmotionCluster.calm;
+    }
   }
 }
 
-// 사용자 프로필 정보를 담는 모델
 class UserProfile {
+  final String userId;
   final String nickname;
   final String characterType;
-  final int rsesScore; // 자존감 척도 점수
-
+  final int rsesScore;
   UserProfile({
+    required this.userId,
     required this.nickname,
     required this.characterType,
     required this.rsesScore,
   });
 }
 
-// 사용자의 감정 기록 하나를 나타내는 모델
+class AnalysisInput {
+  final String? note;
+  final EmotionIcon? icon;
+  final double intensity;
+  final List<String> contexts;
+  final UserProfile userProfile;
+  AnalysisInput({
+    this.note,
+    this.icon,
+    required this.intensity,
+    required this.contexts,
+    required this.userProfile,
+  });
+}
+
+class LLMResponse {
+  final Map<EmotionCluster, double> clusterScores;
+  final List<String> evidence;
+  final String intent;
+  final bool isIronic;
+  LLMResponse({
+    required this.clusterScores,
+    required this.evidence,
+    required this.intent,
+    required this.isIronic,
+  });
+}
+
+class Solution {
+  final String routineName;
+  final int routineDuration;
+  final String miniAction;
+  const Solution({
+    required this.routineName,
+    required this.routineDuration,
+    required this.miniAction,
+  });
+}
+
+class ReasonCard {
+  final String title;
+  final String description;
+  const ReasonCard({required this.title, required this.description});
+}
+
+class AnalysisResult {
+  final Solution solution;
+  final ReasonCard reasonCard;
+  final double gScore;
+  final EmotionCluster mainCluster;
+  AnalysisResult({
+    required this.solution,
+    required this.reasonCard,
+    required this.gScore,
+    required this.mainCluster,
+  });
+}
+
+class ChatMessage {
+  final String text;
+  final bool isUserMessage;
+  ChatMessage({required this.text, required this.isUserMessage});
+}
+
 class EmotionRecord {
   final DateTime timestamp;
-  final String emotion; // 예: 'anxiety', 'anger'
-  final String? note; // 텍스트로 기록한 경우
-  final int intensity;
-
+  final EmotionCluster emotion;
+  final String? note;
+  final double intensity;
+  final double gScore;
   EmotionRecord({
     required this.timestamp,
     required this.emotion,
     this.note,
     required this.intensity,
+    required this.gScore,
   });
 }

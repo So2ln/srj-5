@@ -1,13 +1,14 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:srj_5/providers/user_provider.dart';
 import 'package:srj_5/screens/splash_screen.dart';
 import 'package:srj_5/utils/app_styles.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-// 다른 파일들을 import 하기 전에, 해당 파일들이 프로젝트 내에 생성되었는지 확인하세요.
-// 예시: import 'package:care_app/providers/user_provider.dart';
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ko_KR', null);
   runApp(const MyApp());
 }
 
@@ -16,7 +17,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ChangeNotifierProvider를 사용하여 앱 전역에서 UserProvider 상태를 공유
     return ChangeNotifierProvider(
       create: (context) => UserProvider(),
       child: MaterialApp(
@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primaryColor: AppColors.primary,
           scaffoldBackgroundColor: AppColors.background,
-          fontFamily: 'Pretendard', // 앱 기본 폰트
+          fontFamily: 'Pretendard',
           appBarTheme: const AppBarTheme(
             backgroundColor: AppColors.background,
             elevation: 0,

@@ -1,15 +1,15 @@
+// lib/screens/intervention_screen.dart
 import 'package:flutter/material.dart';
 import 'package:srj_5/models/app_models.dart';
 import 'package:srj_5/utils/app_styles.dart';
 
 class InterventionScreen extends StatelessWidget {
   final AnalysisResult analysisResult;
-
   const InterventionScreen({super.key, required this.analysisResult});
 
   @override
   Widget build(BuildContext context) {
-    final intervention = analysisResult.intervention;
+    final solution = analysisResult.solution;
     final reasonCard = analysisResult.reasonCard;
 
     return Scaffold(
@@ -21,8 +21,8 @@ class InterventionScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '지금 당신을 위한 120초 루틴',
+              Text(
+                '지금 당신을 위한 ${solution.routineDuration}초 루틴',
                 style: AppTextStyles.title,
                 textAlign: TextAlign.center,
               ),
@@ -43,7 +43,7 @@ class InterventionScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        intervention.routineName,
+                        solution.routineName,
                         style: AppTextStyles.heading,
                         textAlign: TextAlign.center,
                       ),
@@ -52,27 +52,19 @@ class InterventionScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              const Text(
-                '추천 이유',
+              Text(
+                reasonCard.title,
                 style: AppTextStyles.heading,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               Text(
-                reasonCard,
+                reasonCard.description,
                 style: AppTextStyles.body,
                 textAlign: TextAlign.center,
               ),
               const Spacer(),
-              ElevatedButton(
-                onPressed: () {
-                  // TODO: 루틴 실행 로직 (예: 타이머 시작, 영상 재생 화면으로 이동)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('루틴을 시작합니다! (구현 필요)')),
-                  );
-                },
-                child: const Text('루틴 시작하기'),
-              ),
+              ElevatedButton(onPressed: () {}, child: const Text('루틴 시작하기')),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.pop(context),

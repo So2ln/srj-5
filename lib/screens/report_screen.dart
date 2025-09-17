@@ -1,15 +1,23 @@
 // lib/screens/report_screen.dart
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:srj_5/models/app_models.dart';
 import 'package:srj_5/providers/user_provider.dart';
 import 'package:srj_5/utils/app_styles.dart';
 import 'package:srj_5/widgets/monthly_calendar_view.dart';
-import 'package:intl/intl.dart';
 
-class ReportScreen extends StatelessWidget {
+class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
+
+  @override
+  State<ReportScreen> createState() => _ReportScreenState();
+}
+
+class _ReportScreenState extends State<ReportScreen> {
+  bool _isCurved = false; // 기본값을 직선으로 설정
 
   @override
   Widget build(BuildContext context) {
@@ -53,22 +61,56 @@ class ReportScreen extends StatelessWidget {
           ),
         )
         .toList();
-    // 차트에 시간 순서대로(왼쪽이 과거) 표시되도록 정렬
-    recentRecords.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    // --- 1. 데이터 사전 처리: 날짜별로 G-Score 평균 계산 ---
+    final Map<DateTime, double> dailyAverageScores = {};
+    final Map<DateTime, int> dailyRecordCounts = {};
+    for (var record in recentRecords) {
+      final dateKey = DateTime(
+        record.timestamp.year,
+        record.timestamp.month,
+        record.timestamp.day,
+      );
+      dailyAverageScores[dateKey] =
+          (dailyAverageScores[dateKey] ?? 0) + record.gScore;
+      dailyRecordCounts[dateKey] = (dailyRecordCounts[dateKey] ?? 0) + 1;
+    }
+    dailyAverageScores.forEach((key, value) {
+      dailyAverageScores[key] = value / dailyRecordCounts[key]!;
+    });
+
+    final sortedDailyData = dailyAverageScores.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('최근 2주간 G-Score 변화', style: AppTextStyles.heading),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('최근 2주간 G-Score 변화', style: AppTextStyles.heading),
+              // 스위치로 smoothing ON/OFF
+              // Row(
+              //   children: [
+              //     const Text('부드러운 곡선', style: TextStyle(fontSize: 12)),
+              // Switch(
+              //   value: _isCurved,
+              //   onChanged: (value) => setState(() => _isCurved = value),
+              //   activeColor: AppColors.primary,
+              // ),
+              //   ],
+              // ),
+            ],
+          ),
           const SizedBox(height: 20),
           SizedBox(
             height: 250,
-            child: recentRecords.isNotEmpty
+            child: sortedDailyData.isNotEmpty
                 ? Padding(
-                    padding: const EdgeInsets.only(right: 16.0), // 오른쪽 여백 추가
-                    child: LineChart(_buildLineChartData(recentRecords)),
+                    padding: const EdgeInsets.only(right: 16.0, top: 16.0),
+                    child: LineChart(_buildLineChartData(sortedDailyData)),
                   )
                 : const Center(child: Text("표시할 데이터가 없습니다.")),
           ),
@@ -103,55 +145,69 @@ class ReportScreen extends StatelessWidget {
     );
   }
 
-  LineChartData _buildLineChartData(List<EmotionRecord> records) {
-    // --- X축 좌우 여백 추가를 위한 로직 ---
-    // 데이터의 시작 날짜와 마지막 날짜를 찾습니다.
-    final minDate = records.first.timestamp;
-    final maxDate = records.last.timestamp;
-    // 하루만큼의 여백을 설정합니다.
-    const buffer = Duration(hours: 1);
+  // --- 차트 데이터 생성 함수 (완벽 수정 버전) ---
+  LineChartData _buildLineChartData(
+    List<MapEntry<DateTime, double>> dailyData,
+  ) {
+    // --- 1. X축을 위한 정수 인덱스 생성 ---
+    // spots: X축 값으로 0, 1, 2... 순서의 정수를 사용
+    final spots = dailyData.asMap().entries.map((entry) {
+      // entry.key 는 인덱스 (0, 1, 2, ...), entry.value 는 MapEntry<DateTime, double>
+      return FlSpot(entry.key.toDouble(), entry.value.value);
+    }).toList();
 
-    // X축의 최소값과 최대값을 여백을 포함하여 설정합니다.
-    final minX = minDate.subtract(buffer).millisecondsSinceEpoch.toDouble();
-    final maxX = maxDate.add(buffer).millisecondsSinceEpoch.toDouble();
-    // ------------------------------------
-
-    final spots = records
-        .map(
-          (r) =>
-              FlSpot(r.timestamp.millisecondsSinceEpoch.toDouble(), r.gScore),
-        )
-        .toList();
+    // bottomTitles: 정수 인덱스를 실제 날짜 텍스트로 변환하기 위한 '번역기' 맵
+    final Map<int, String> bottomTitlesMap = {
+      for (var entry in dailyData.asMap().entries)
+        entry.key: DateFormat('M/d').format(entry.value.key),
+    };
 
     return LineChartData(
-      // --- X축 범위 설정 ---
-      minX: minX,
-      maxX: maxX,
-      // ---------------------
+      // --- 툴팁 추가: 점을 터치하면 날짜와 G-Score 표시 ---
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipItems: (touchedSpots) {
+            return touchedSpots.map((spot) {
+              // spot.spotIndex는 점의 인덱스(0, 1, 2...)와 같습니다.
+              final dateText = bottomTitlesMap[spot.spotIndex] ?? '';
+              return LineTooltipItem(
+                '$dateText\nG-Score: ${spot.y.toStringAsFixed(1)}',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            }).toList();
+          },
+        ),
+      ),
       gridData: const FlGridData(show: false),
       titlesData: FlTitlesData(
         leftTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+          sideTitles: SideTitles(showTitles: true, reservedSize: 32),
         ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        // --- 2. X축 라벨(날짜) 설정 ---
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            // 데이터가 너무 촘촘하지 않도록 적절한 간격으로 표시
-            interval: 1000 * 60 * 60 * 24 * 1, // 1일 간격
+            interval: 1, // 모든 정수 인덱스마다 라벨을 그리려고 시도
             getTitlesWidget: (value, meta) {
-              // X축 범위 밖의 레이블은 그리지 않음
-              if (value < minDate.millisecondsSinceEpoch ||
-                  value > maxDate.millisecondsSinceEpoch) {
-                return const Text('');
+              final index = value.toInt();
+              // 데이터가 너무 촘촘할 경우, 2일에 한 번씩만 라벨 표시 (조절 가능)
+              if (dailyData.length > 10 && index % 2 != 0) {
+                return const SizedBox.shrink();
               }
-              final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-              // --- 날짜 형식 변경: "9/15" 와 같은 형식으로 표시 ---
+              final title = bottomTitlesMap[index] ?? '';
               return SideTitleWidget(
                 axisSide: meta.axisSide,
                 space: 4,
                 child: Text(
-                  DateFormat('M/d').format(date),
+                  title,
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textColorLight,
@@ -161,10 +217,6 @@ class ReportScreen extends StatelessWidget {
             },
           ),
         ),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
       ),
       borderData: FlBorderData(
         show: true,
@@ -173,19 +225,19 @@ class ReportScreen extends StatelessWidget {
       lineBarsData: [
         LineChartBarData(
           spots: spots,
-          isCurved: true,
+          isCurved: _isCurved,
           color: AppColors.primary,
-          barWidth: 4,
+          barWidth: 3,
           isStrokeCapRound: true,
-          dotData: FlDotData(show: true), // 데이터 포인트에 점 표시
+          dotData: FlDotData(show: true),
           belowBarData: BarAreaData(
             show: true,
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withOpacity(0.2),
           ),
         ),
       ],
       minY: 0,
-      maxY: 15,
+      maxY: 10,
     );
   }
 }
